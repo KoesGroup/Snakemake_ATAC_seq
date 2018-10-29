@@ -11,7 +11,7 @@ from snakemake.utils import validate, min_version
 # Configuration and sample sheets
 #############################################
 
-configfile: "configs/config_tomato_sub.yaml"
+configfile: "config.yaml"
 
 WORKING_DIR         = config["working_dir"]    # where you want to store your intermediate files (this directory will be cleaned up at the end)
 RESULT_DIR          = config["result_dir"]      # what you want to keep
@@ -106,7 +106,7 @@ rule all:
         PLOTFINGERPRINT,
         PLOTPROFILE_PDF,
         PLOTPROFILE_BED,
-        MULTIQC 
+        MULTIQC
     message: "ChIP-seq pipeline succesfully run."		#finger crossed to see this message!
 
     shell:"#rm -rf {WORKING_DIR}"
