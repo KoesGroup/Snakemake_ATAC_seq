@@ -7,10 +7,14 @@ A snakemake pipeline for the analysis of ATAC-seq data
 # Aim
 
 Snakemake pipeline made for reproducible analysis of paired-end Illumina ATAC-seq data. This pipeline is similar on many point to the Snakemake_ChIP-seq pipeline, it includes steps of mapping to the mitochondrial and chloroplast genome of tomato as contamination by these organelles occurs often in ATAC-seq.
-Post-processing also includes the tool AlignementSieve, for the adjustement of the binding site.
+Post-processing also includes the tool **AlignementSieve**, for the adjustement of the binding site.
 
 
 For now I chose to include the fasta files for the mitochondrial and chloroplast genome directly in the repository, in the future I would like the pipeline to be able to fetch them.
+
+
+The bowtie2 alignment is modified to output as well the unmapped reads using `--un-conc-gz` flag. The unmapped reads and total reads are then aligned to the reference, mitochondrial and chloroplast genome. The output of the mapping is then analysed with `samtools flagstat` and hopefully nicely ploted thanks to **MultiQc**.
+
 
 # Content of the repository
 
