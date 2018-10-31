@@ -20,6 +20,8 @@ GENOME_FASTA_URL    = config["refs"]["genome_url"]
 GENOME_FASTA_FILE   = os.path.basename(config["refs"]["genome_url"])
 GFF_URL             = config["refs"]["gff_url"]
 GFF_FILE            = os.path.basename(config["refs"]["gff_url"])
+MT_GENOME_URL       = config["refs"]["mt_genome_url"]
+MT_GENOME_FILE      = os.path.basename(config["refs"]["mt_genome_url"])
 
 TOTALCORES          = 16                             #check this via 'grep -c processor /proc/cpuinfo'
 
@@ -72,6 +74,9 @@ wildcard_constraints:
 FASTQC_REPORTS  =     expand(RESULT_DIR + "fastqc/{sample}_{pair}_fastqc.zip", sample=SAMPLES, pair={"forward", "reverse"})
 BAM_INDEX       =     expand(RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam.bai", sample=SAMPLES)
 BAM_RMDUP       =     expand(RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam", sample=SAMPLES)
+FLAGSTAT_GEN    =     expand(RESULT_DIR + "logs/flagstat/genome/{sample}.bam.flagstat", sample=SAMPLES)
+FLAGSTAT_MITO   =     expand(RESULT_DIR + "logs/flagstat/mitochondrial/{sample}.bam.flagstat", sample=SAMPLES)
+FLAGSTAT_CHLORO =     expand(RESULT_DIR + "logs/flagstat/chloroplast/{sample}.bam.flagstat", sample=SAMPLES)
 BEDGRAPH        =     expand(RESULT_DIR + "bedgraph/{sample}.sorted.rmdup.bedgraph", sample=SAMPLES)
 BIGWIG          =     expand(RESULT_DIR + "bigwig/{sample}.bw", sample=SAMPLES)
 BAM_COMPARE     =     expand(RESULT_DIR + "bamcompare/log2_{treatment}_{control}.bamcompare.bw", zip, treatment = CASES, control = CONTROLS) #add zip function in the expand to compare respective treatment and control
@@ -106,7 +111,10 @@ rule all:
         PLOTFINGERPRINT,
         PLOTPROFILE_PDF,
         PLOTPROFILE_BED,
-        MULTIQC
+        MULTIQC,
+        FLAGSTAT_GEN,
+        #FLAGSTAT_MITO,
+        #FLAGSTAT_CHLORO
     message: "ChIP-seq pipeline succesfully run."		#finger crossed to see this message!
 
     shell:"#rm -rf {WORKING_DIR}"
@@ -191,6 +199,36 @@ rule index:
         "envs/samtools_bowtie_env.yaml"
     shell:"bowtie2-build --threads {threads} {input} {params}"
 
+rule index_chloro:
+    input:
+        "SL_chloroplaste_sequence.fasta"
+    output:
+        [WORKING_DIR + "chloroplast." + str(i) + ".bt2" for i in range(1,5)],
+        WORKING_DIR + "chloroplast.rev.1.bt2",
+        WORKING_DIR + "chloroplast.rev.2.bt2"
+    message:"indexing chloroplast genome"
+    params:
+        WORKING_DIR + "chloroplast"
+    threads: 10
+    conda:
+        "envs/samtools_bowtie_env.yaml"
+    shell:"bowtie2-build --threads {threads} {input} {params}"
+
+rule index_mito:
+    input:
+        "S_lycopersicum_mitochondrion_v1.5_genomic.fna"
+    output:
+        [WORKING_DIR + "mitochondrialgenome." + str(i) + ".bt2" for i in range(1,5)],
+        WORKING_DIR + "mitochondrialgenome.rev.1.bt2",
+        WORKING_DIR + "mitochondrialgenome.rev.2.bt2"
+    message:"indexing mitochondrial genome"
+    params:
+        WORKING_DIR + "mitochondrialgenome"
+    threads: 10
+    conda:
+        "envs/samtools_bowtie_env.yaml"
+    shell:"bowtie2-build --threads {threads} {input} {params}"
+
 rule align:
     input:
         forward         = WORKING_DIR + "trimmed/{sample}_forward.fastq.gz",
@@ -199,11 +237,13 @@ rule align:
         reverseUnpaired = WORKING_DIR + "trimmed/{sample}_reverse_unpaired.fastq.gz",
         index           = [WORKING_DIR + "genome." + str(i) + ".bt2" for i in range(1,5)]
     output:
-        temp(WORKING_DIR + "mapped/{sample}.bam")
+        mapped          = WORKING_DIR + "mapped/{sample}.bam",
+        unmapped        = [WORKING_DIR + "unmapped/{sample}.fq." + str(i) +".gz" for i in range(1,2)]
     message: "Mapping files {wildcards.sample}"
     params:
         bowtie          = " ".join(config["bowtie2"]["params"].values()), #take argument separated as a list separated with a space
-        index           = WORKING_DIR + "genome"
+        index           = WORKING_DIR + "genome",
+        unmapped        = WORKING_DIR + "unmapped/{sample}.fq.gz"
     threads: 10
     conda:
         "envs/samtools_bowtie_env.yaml"
@@ -214,14 +254,109 @@ rule align:
         "--threads {threads} "
         "-x {params.index} "
         "-1 {input.forward} -2 {input.reverse} "
-        "-U {input.forwardUnpaired},{input.reverseUnpaired} "   # also takes the reads unpaired due to trimming
-        "| samtools view -Sb - > {output} 2>{log}"                       # to get the output as a BAM file directly
+        "-U {input.forwardUnpaired},{input.reverseUnpaired} "
+        "--un-conc-gz {params.unmapped} "
+        "| samtools view -Sb - > {output.mapped} 2>{log}"                       # to get the output as a BAM file directly
+
+rule align_chloro:
+    input:
+        forward         = WORKING_DIR + "trimmed/{sample}_forward.fastq.gz",
+        reverse         = WORKING_DIR + "trimmed/{sample}_reverse.fastq.gz",
+        forwardUnpaired = WORKING_DIR + "trimmed/{sample}_forward_unpaired.fastq.gz",
+        reverseUnpaired = WORKING_DIR + "trimmed/{sample}_reverse_unpaired.fastq.gz",
+        index           = [WORKING_DIR + "chloroplast." + str(i) + ".bt2" for i in range(1,5)],
+        nonmapped_for   = WORKING_DIR + "unmapped/{sample}.fq.1.gz",
+        nonmapped_rev   = WORKING_DIR + "unmapped/{sample}.fq.2.gz"
+    output:
+        mapped          = WORKING_DIR + "mapped/chloroplast_mapped/{sample}.bam",
+        unmapped        = WORKING_DIR + "mapped/chloroplast_unmapped/{sample}.bam"
+    conda:
+        "envs/samtools_bowtie_env.yaml"
+    message:
+        "Mapping files {wildcards.sample} to chloroplast DNA"
+    params:
+        bowtie          = " ".join(config["bowtie2"]["params"].values()), #take argument separated as a list separated with a space
+        index           = WORKING_DIR + "chloroplast"
+    threads: 10
+    shell:
+        """
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.forward} -2 {input.reverse} -U {input.forwardUnpaired},{input.reverseUnpaired} | samtools view -Sb - > {output.mapped} 2>{log}
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.nonmapped_for} -2 {input.nonmapped_rev}| samtools view -Sb - > {output.unmapped} 2>{log}
+        """
+
+rule align_mito:
+    input:
+        forward         = WORKING_DIR + "trimmed/{sample}_forward.fastq.gz",
+        reverse         = WORKING_DIR + "trimmed/{sample}_reverse.fastq.gz",
+        forwardUnpaired = WORKING_DIR + "trimmed/{sample}_forward_unpaired.fastq.gz",
+        reverseUnpaired = WORKING_DIR + "trimmed/{sample}_reverse_unpaired.fastq.gz",
+        index           = [WORKING_DIR + "mitochondrialgenome." + str(i) + ".bt2" for i in range(1,5)],
+        nonmapped_for   = WORKING_DIR + "unmapped/{sample}.fq.1.1.gz",
+        nonmapped_rev   = WORKING_DIR + "unmapped/{sample}.fq.1.2.gz"
+    output:
+        mapped          = WORKING_DIR + "mapped/mitochondrial_mapped/{sample}.bam",
+        unmapped        = WORKING_DIR + "mapped/mitochondrial_unmapped/{sample}.bam"
+    conda:
+        "envs/samtools_bowtie_env.yaml"
+    message:
+        "Mapping files {wildcards.sample} to mitochondrial genome"
+    params:
+        bowtie          = " ".join(config["bowtie2"]["params"].values()), #take argument separated as a list separated with a space
+        index           = WORKING_DIR + "mitochondrialgenome"
+    threads: 10
+    shell:
+        """
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.forward} -2 {input.reverse} -U {input.forwardUnpaired},{input.reverseUnpaired} | samtools view -Sb - > {output.mapped} 2>{log}
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.nonmapped_for} -2 {input.nonmapped_rev}| samtools view -Sb - > {output.unmapped} 2>{log}
+        """
+
+rule flagstat_genome:
+    input:
+        WORKING_DIR + "mapped/{sample}.bam"
+    output:
+        RESULT_DIR + "logs/flagstat/genome/{sample}.bam.flagstat"
+    message:
+        "Analyzing mapping information of {wildcards.sample}"
+    params:
+        jobname = "{sample}"
+    conda:
+        "envs/samtools_bowtie_env.yaml"
+    shell:
+        "samtools flagstat {input} > {output}"
+
+rule flagstat_mitochondrial:
+    input:
+        WORKING_DIR + "mapped/mitochondrial_mapped/{sample}.bam"
+    output:
+        RESULT_DIR + "logs/flagstat/mitochondrial/{sample}.bam.flagstat"
+    message:
+        "Analyzing mapping information of {wildcards.sample}"
+    params:
+        jobname = "{sample}"
+    conda:
+        "envs/samtools_bowtie_env.yaml"
+    shell:
+        "samtools flagstat {input} > {output}"
+
+rule flagstat_chloroplast:
+    input:
+        WORKING_DIR + "mapped/chloroplast_mapped/{sample}.bam"
+    output:
+        RESULT_DIR + "logs/flagstat/chloroplast/{sample}.bam.flagstat"
+    message:
+        "Analyzing mapping information of {wildcards.sample}"
+    params:
+        jobname = "{sample}"
+    conda:
+        "envs/samtools_bowtie_env.yaml"
+    shell:
+        "samtools flagstat {input} > {output}"
 
 rule sort:
     input:
         WORKING_DIR + "mapped/{sample}.bam"
     output:
-        temp(RESULT_DIR + "mapped/{sample}.sorted.bam")
+        RESULT_DIR + "mapped/{sample}.sorted.bam"
     message:"sorting {wildcards.sample} bam file"
     threads: 10
     log:
@@ -247,6 +382,7 @@ rule rmdup:
         samtools index {output.bam}
         """
         #samtools manual says "This command is obsolete. Use markdup instead
+
 
 rule bedgraph:
     input:
@@ -522,7 +658,7 @@ rule plotProfile:
 
 rule multiqc:
     input:
-        RESULT_DIR + "logs/"
+        RESULT_DIR + "logs/deeptools/"
     output:
         "multiqc_report.html"
     conda:
