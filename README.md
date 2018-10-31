@@ -1,14 +1,16 @@
 # ChIP_seq_Snakemake
-A snakemake pipeline for the analysis of ChIP-seq data
+A snakemake pipeline for the analysis of ATAC-seq data
 
 [![Snakemake](https://img.shields.io/badge/snakemake-≥5.2.0-brightgreen.svg)](https://snakemake.bitbucket.io)
 [![Miniconda](https://img.shields.io/badge/miniconda-blue.svg)](https://conda.io/miniconda)
 
 # Aim
-Snakemake pipeline made for reproducible analysis of paired-end Illumina ChIP-seq data. The desired output of this pipeline are:
-- fastqc zip and html files
-- bigWig files (including bamCompare rule)
-- bed files
+
+Snakemake pipeline made for reproducible analysis of paired-end Illumina ATAC-seq data. This pipeline is similar on many point to the Snakemake_ChIP-seq pipeline, it includes steps of mapping to the mitochondrial and chloroplast genome of tomato as contamination by these organelles occurs often in ATAC-seq.
+Post-processing also includes the tool AlignementSieve, for the adjustement of the binding site.
+
+
+For now I chose to include the fasta files for the mitochondrial and chloroplast genome directly in the repository, in the future I would like the pipeline to be able to fetch them.
 
 # Content of the repository
 
@@ -63,4 +65,3 @@ With the implementation of deeptools rules, the pipeline produces as well those 
 - **HEATMAP** folder contain pdf files displaying the content of the matrix produced by the `computeMatrix` rule under the form of a heatmap. Many option for the `computeMatrix` and the `plotHeatmap` rules can be changed in the configuration file. More information about this figure can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotHeatmap.html).
 
 - **plotProfile** folder contain pdf files displaying profile plot for scores over sets of genomic region, again the genomic region are define in the matrix made previously. Again there are many options to change the plot and more information can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotProfile.html)
-
