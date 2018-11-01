@@ -72,12 +72,12 @@ wildcard_constraints:
 ##############
 
 FASTQC_REPORTS  =     expand(RESULT_DIR + "fastqc/{sample}_{pair}_fastqc.zip", sample=SAMPLES, pair={"forward", "reverse"})
-BAM_INDEX       =     expand(RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam.bai", sample=SAMPLES)
-BAM_RMDUP       =     expand(RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam", sample=SAMPLES)
+BAM_INDEX       =     expand(RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam.bai", sample=SAMPLES)
+#BAM_RMDUP       =     expand(RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam", sample=SAMPLES)
 FLAGSTAT_GEN    =     expand(RESULT_DIR + "logs/flagstat/genome/{sample}.bam.flagstat", sample=SAMPLES)
 FLAGSTAT_MITO   =     expand(RESULT_DIR + "logs/flagstat/mitochondrial/{sample}.bam.flagstat", sample=SAMPLES)
 FLAGSTAT_CHLORO =     expand(RESULT_DIR + "logs/flagstat/chloroplast/{sample}.bam.flagstat", sample=SAMPLES)
-BEDGRAPH        =     expand(RESULT_DIR + "bedgraph/{sample}.sorted.rmdup.bedgraph", sample=SAMPLES)
+BEDGRAPH        =     expand(RESULT_DIR + "bedgraph/{sample}.sorted.shifted.rmdup.bedgraph", sample=SAMPLES)
 BIGWIG          =     expand(RESULT_DIR + "bigwig/{sample}.bw", sample=SAMPLES)
 BAM_COMPARE     =     expand(RESULT_DIR + "bamcompare/log2_{treatment}_{control}.bamcompare.bw", zip, treatment = CASES, control = CONTROLS) #add zip function in the expand to compare respective treatment and control
 BED_NARROW      =     expand(RESULT_DIR + "bed/{treatment}_vs_{control}_peaks.narrowPeak", zip, treatment = CASES, control = CONTROLS)
@@ -97,7 +97,7 @@ MULTIQC         =     "multiqc_report.html"
 rule all:
     input:
         BAM_INDEX,
-        BAM_RMDUP,
+        #BAM_RMDUP,
         FASTQC_REPORTS,
         BEDGRAPH,
         BIGWIG,
@@ -111,11 +111,11 @@ rule all:
         PLOTFINGERPRINT,
         PLOTPROFILE_PDF,
         PLOTPROFILE_BED,
-        MULTIQC,
+        #MULTIQC,
         FLAGSTAT_GEN,
-        #FLAGSTAT_MITO,
-        #FLAGSTAT_CHLORO
-    message: "ChIP-seq pipeline succesfully run."		#finger crossed to see this message!
+        FLAGSTAT_MITO,
+        FLAGSTAT_CHLORO
+    message: "ATAC-seq pipeline succesfully run."		#finger crossed to see this message!
 
     shell:"#rm -rf {WORKING_DIR}"
 
@@ -238,7 +238,9 @@ rule align:
         index           = [WORKING_DIR + "genome." + str(i) + ".bt2" for i in range(1,5)]
     output:
         mapped          = WORKING_DIR + "mapped/{sample}.bam",
-        unmapped        = [WORKING_DIR + "unmapped/{sample}.fq." + str(i) +".gz" for i in range(1,2)]
+        unmapped        = [WORKING_DIR + "unmapped/{sample}.fq." + str(i) +".gz" for i in range(1,2)],
+        bai             = WORKING_DIR + "mapped/{sample}.sorted.bam.bai",
+        sorted          = WORKING_DIR + "mapped/{sample}.sorted.bam"
     message: "Mapping files {wildcards.sample}"
     params:
         bowtie          = " ".join(config["bowtie2"]["params"].values()), #take argument separated as a list separated with a space
@@ -250,14 +252,11 @@ rule align:
     log:
         RESULT_DIR + "logs/bowtie/{sample}.log"
     shell:
-        "bowtie2 {params.bowtie} "
-        "--threads {threads} "
-        "-x {params.index} "
-        "-1 {input.forward} -2 {input.reverse} "
-        "-U {input.forwardUnpaired},{input.reverseUnpaired} "
-        "--un-conc-gz {params.unmapped} "
-        "| samtools view -Sb - > {output.mapped} 2>{log}"                       # to get the output as a BAM file directly
-
+        """
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.forward} -2 {input.reverse} -U {input.forwardUnpaired},{input.reverseUnpaired} --un-conc-gz {params.unmapped} | samtools view -Sb - > {output.mapped} 2>{log}
+        samtools sort -o {output.sorted} {output.mapped} &>{log}
+        samtools index {output.sorted}
+        """    
 rule align_chloro:
     input:
         forward         = WORKING_DIR + "trimmed/{sample}_forward.fastq.gz",
@@ -280,8 +279,8 @@ rule align_chloro:
     threads: 10
     shell:
         """
-        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.forward} -2 {input.reverse} -U {input.forwardUnpaired},{input.reverseUnpaired} | samtools view -Sb - > {output.mapped} 2>{log}
-        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.nonmapped_for} -2 {input.nonmapped_rev}| samtools view -Sb - > {output.unmapped} 2>{log}
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.forward} -2 {input.reverse} -U {input.forwardUnpaired},{input.reverseUnpaired} | samtools view -Sb - > {output.mapped}
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.nonmapped_for} -2 {input.nonmapped_rev}| samtools view -Sb - > {output.unmapped}
         """
 
 rule align_mito:
@@ -291,8 +290,8 @@ rule align_mito:
         forwardUnpaired = WORKING_DIR + "trimmed/{sample}_forward_unpaired.fastq.gz",
         reverseUnpaired = WORKING_DIR + "trimmed/{sample}_reverse_unpaired.fastq.gz",
         index           = [WORKING_DIR + "mitochondrialgenome." + str(i) + ".bt2" for i in range(1,5)],
-        nonmapped_for   = WORKING_DIR + "unmapped/{sample}.fq.1.1.gz",
-        nonmapped_rev   = WORKING_DIR + "unmapped/{sample}.fq.1.2.gz"
+        nonmapped_for   = WORKING_DIR + "unmapped/{sample}.fq.1.gz",
+        nonmapped_rev   = WORKING_DIR + "unmapped/{sample}.fq.2.gz"
     output:
         mapped          = WORKING_DIR + "mapped/mitochondrial_mapped/{sample}.bam",
         unmapped        = WORKING_DIR + "mapped/mitochondrial_unmapped/{sample}.bam"
@@ -306,8 +305,8 @@ rule align_mito:
     threads: 10
     shell:
         """
-        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.forward} -2 {input.reverse} -U {input.forwardUnpaired},{input.reverseUnpaired} | samtools view -Sb - > {output.mapped} 2>{log}
-        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.nonmapped_for} -2 {input.nonmapped_rev}| samtools view -Sb - > {output.unmapped} 2>{log}
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.forward} -2 {input.reverse} -U {input.forwardUnpaired},{input.reverseUnpaired} | samtools view -Sb - > {output.mapped}
+        bowtie2 {params.bowtie} --threads {threads} -x {params.index} -1 {input.nonmapped_for} -2 {input.nonmapped_rev}| samtools view -Sb - > {output.unmapped}
         """
 
 rule flagstat_genome:
@@ -352,43 +351,64 @@ rule flagstat_chloroplast:
     shell:
         "samtools flagstat {input} > {output}"
 
+rule alignmentsieve:
+    input:
+        bam = WORKING_DIR + "mapped/{sample}.sorted.bam",
+        bai = WORKING_DIR + "mapped/{sample}.sorted.bam.bai"
+    output:
+        bam              = RESULT_DIR + "mapped/{sample}.shifted.rmdup.bam",
+        filteredOutReads = RESULT_DIR + "mapped/filteredOutReads/{sample}.bam",
+        filterMetrics    = RESULT_DIR + "logs/alignmentsieve/{sample}.txt" 
+    log:
+        RESULT_DIR + "logs/alignmentsieve/{sample}.log"
+    conda:
+        "envs/deeptools.yaml"
+    shell:
+        "alignmentSieve --bam {input.bam} --outFile {output.bam} --ATACshift --filteredOutReads {output.filteredOutReads} --filterMetrics {output.filterMetrics} --ignoreDuplicates 2>{log}"
+
 rule sort:
     input:
-        WORKING_DIR + "mapped/{sample}.bam"
+        RESULT_DIR + "mapped/{sample}.shifted.rmdup.bam"
     output:
-        RESULT_DIR + "mapped/{sample}.sorted.bam"
+        bam = RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam",
+        bai = RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam.bai"
     message:"sorting {wildcards.sample} bam file"
     threads: 10
     log:
         RESULT_DIR + "logs/samtools/{sample}.sort.log"
     conda:
         "envs/samtools.yaml"
-    shell:"samtools sort -@ {threads} -o {output} {input} &>{log}"
-
-rule rmdup:
-    input:
-        RESULT_DIR + "mapped/{sample}.sorted.bam"
-    output:
-        bam = RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam",
-        bai = RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam.bai"        #bai files required for the bigwig and bamCompare rules
-    message: "Removing duplicate from file {wildcards.sample}"
-    log:
-        RESULT_DIR + "logs/samtools/{sample}.sorted.rmdup.bam.log"
-    conda:
-        "envs/samtools.yaml"
     shell:
         """
-        samtools rmdup {input} {output.bam} &>{log}
+        samtools sort -@ {threads} -o {output} {input} &>{log}
         samtools index {output.bam}
         """
-        #samtools manual says "This command is obsolete. Use markdup instead
+
+# rule rmdup:
+#     input:
+#         RESULT_DIR + "mapped/{sample}.sorted.bam"
+#     output:
+#         bam = RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam",
+#         bai = RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam.bai"        #bai files required for the bigwig and bamCompare rules
+#     message: "Removing duplicate from file {wildcards.sample}"
+#     log:
+#         RESULT_DIR + "logs/samtools/{sample}.sorted.rmdup.bam.log"
+#     conda:
+#         "envs/samtools.yaml"
+#     shell:
+#         """
+#         samtools rmdup {input} {output.bam} &>{log}
+#         samtools index {output.bam}
+#         """
+#         #samtools manual says "This command is obsolete. Use markdup instead
+
 
 
 rule bedgraph:
     input:
-        RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam"
+        RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam"
     output:
-        RESULT_DIR + "bedgraph/{sample}.sorted.rmdup.bedgraph"
+        RESULT_DIR + "bedgraph/{sample}.sorted.shifted.rmdup.bedgraph"
     params:
         genome = WORKING_DIR + "genome"
     message:
@@ -402,7 +422,7 @@ rule bedgraph:
 
 rule bamCoverage:
     input:
-        RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam"
+        RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam"
     output:
         RESULT_DIR + "bigwig/{sample}.bw"
     message:
@@ -430,8 +450,8 @@ rule bamCoverage:
 
 rule bamcompare:
     input:
-        treatment   = RESULT_DIR + "mapped/{treatment}.sorted.rmdup.bam",              #input requires an indexed bam file
-        control     = RESULT_DIR + "mapped/{control}.sorted.rmdup.bam"                   #input requires an indexed bam file
+        treatment   = RESULT_DIR + "mapped/{treatment}.shifted.rmdup.sorted.bam",              #input requires an indexed bam file
+        control     = RESULT_DIR + "mapped/{control}.shifted.rmdup.sorted.bam"                   #input requires an indexed bam file
     output:
         bigwig = RESULT_DIR + "bamcompare/log2_{treatment}_{control}.bamcompare.bw"
     message:
@@ -462,8 +482,8 @@ rule bamcompare:
 
 rule call_narrow_peaks:
     input:
-        treatment   = RESULT_DIR + "mapped/{treatment}.sorted.rmdup.bam",
-        control     = RESULT_DIR + "mapped/{control}.sorted.rmdup.bam"
+        treatment   = RESULT_DIR + "mapped/{treatment}.shifted.rmdup.sorted.bam",
+        control     = RESULT_DIR + "mapped/{control}.shifted.rmdup.sorted.bam"
     output:
         RESULT_DIR + "bed/{treatment}_vs_{control}_peaks.narrowPeak"
     message:
@@ -484,8 +504,8 @@ rule call_narrow_peaks:
 
 rule call_broad_peaks:
     input:
-        treatment   = RESULT_DIR + "mapped/{treatment}.sorted.rmdup.bam",
-        control     = RESULT_DIR + "mapped/{control}.sorted.rmdup.bam"
+        treatment   = RESULT_DIR + "mapped/{treatment}.shifted.rmdup.sorted.bam",
+        control     = RESULT_DIR + "mapped/{control}.shifted.rmdup.sorted.bam"
     output:
         RESULT_DIR + "bed/{treatment}_vs_{control}_peaks.broadPeak"
     message:
@@ -507,11 +527,11 @@ rule call_broad_peaks:
 
 rule multiBamSummary:
     input:
-        lambda wildcards: expand(RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam", sample = SAMPLES)
+        lambda wildcards: expand(RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam", sample = SAMPLES)
     output:
         RESULT_DIR + "multiBamSummary/MATRIX.npz"
     message:
-        "Computing the read coverage into a numpy arraty "
+        "Computing the read coverage into a numpy array "
     threads: 10
     params:
         binSize     = str(config['multiBamSummary']['binSize'])
@@ -619,8 +639,8 @@ rule plotHeatmap:
 
 rule plotFingerprint:
     input:
-        treatment = expand(RESULT_DIR + "mapped/{treatment}.sorted.rmdup.bam", treatment = CASES),
-        control   = expand(RESULT_DIR + "mapped/{control}.sorted.rmdup.bam", control = CONTROLS)
+        treatment = expand(RESULT_DIR + "mapped/{treatment}.shifted.rmdup.sorted.bam", treatment = CASES),
+        control   = expand(RESULT_DIR + "mapped/{control}.shifted.rmdup.sorted.bam", control = CONTROLS)
     output:
         pdf = RESULT_DIR + "plotFingerprint/{treatment}_vs_{control}.pdf"
     params:
@@ -658,7 +678,7 @@ rule plotProfile:
 
 rule multiqc:
     input:
-        RESULT_DIR + "logs/deeptools/"
+        RESULT_DIR + "logs/"
     output:
         "multiqc_report.html"
     conda:

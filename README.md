@@ -1,4 +1,4 @@
-# ChIP_seq_Snakemake
+# ATAC_seq_Snakemake
 A snakemake pipeline for the analysis of ATAC-seq data
 
 [![Snakemake](https://img.shields.io/badge/snakemake-≥5.2.0-brightgreen.svg)](https://snakemake.bitbucket.io)
@@ -34,8 +34,8 @@ The bowtie2 alignment is modified to output as well the unmapped reads using `--
 ## Conda environment
 
 First, you need to create an environment for the use of Snakemake with [Conda package manager](https://conda.io/docs/using/envs.html).
-1. Create a virtual environment named "chipseq" from the `global_env.yaml` file with the following command: `conda env create --name chipseq --file ~/envs/global_env.yaml`
-2. Then, activate this virtual environment with `source activate chipseq`
+1. Create a virtual environment named "atacseq" from the `global_env.yaml` file with the following command: `conda env create --name atacseq --file ~/envs/global_env.yaml`
+2. Then, activate this virtual environment with `source activate atacseq`
 
 The Snakefile will then take care of installing and loading the packages and softwares required by each step of the pipeline.
 
@@ -64,7 +64,7 @@ With the implementation of deeptools rules, the pipeline produces as well those 
 
 - **plotFingerprint** contains interesting figures that answer the question: **"Did my ChIP work???"** . Explanation of the plot and the options available can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotFingerprint.html)
 
-- **PLOTCORRELATION** folder contain pdf files displaying the correlation between the samples tested in the ChIP experiment, many options in the plotcorrelation rules can be changed via the configuration file. More information about this plot can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotCorrelation.html)
+- **PLOTCORRELATION** folder contain pdf files displaying the correlation between the samples tested in the ATAC experiment, many options in the plotcorrelation rules can be changed via the configuration file. More information about this plot can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotCorrelation.html)
 
 - **HEATMAP** folder contain pdf files displaying the content of the matrix produced by the `computeMatrix` rule under the form of a heatmap. Many option for the `computeMatrix` and the `plotHeatmap` rules can be changed in the configuration file. More information about this figure can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotHeatmap.html).
 
