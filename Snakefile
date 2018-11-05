@@ -380,7 +380,7 @@ rule sort:
         "envs/samtools.yaml"
     shell:
         """
-        samtools sort -@ {threads} -o {output} {input} &>{log}
+        samtools sort -@ {threads} -o {output.bam} {input} &>{log}
         samtools index {output.bam}
         """
 
