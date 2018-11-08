@@ -90,6 +90,7 @@ PLOTFINGERPRINT =     expand(RESULT_DIR + "plotFingerprint/{treatment}_vs_{contr
 PLOTPROFILE_PDF =     expand(RESULT_DIR + "plotProfile/{treatment}_{control}.pdf", treatment = CASES, control = CONTROLS)
 PLOTPROFILE_BED =     expand(RESULT_DIR + "plotProfile/{treatment}_{control}.bed", treatment = CASES, control = CONTROLS)
 MULTIQC         =     "multiqc_report.html"
+FRAGMENTSIZE    =     RESULT_DIR + "bamPEFragmentSize/fragmentSize.png"  
 
 ###############
 # Final output
@@ -113,8 +114,9 @@ rule all:
         PLOTPROFILE_BED,
         #MULTIQC,
         FLAGSTAT_GEN,
-        FLAGSTAT_MITO,
-        FLAGSTAT_CHLORO
+        #FLAGSTAT_MITO,
+        #FLAGSTAT_CHLORO,
+        FRAGMENTSIZE 
     message: "ATAC-seq pipeline succesfully run."		#finger crossed to see this message!
 
     shell:"#rm -rf {WORKING_DIR}"
@@ -380,7 +382,7 @@ rule sort:
         "envs/samtools.yaml"
     shell:
         """
-        samtools sort -@ {threads} -o {output} {input} &>{log}
+        samtools sort -@ {threads} -o {output.bam} {input} &>{log}
         samtools index {output.bam}
         """
 
@@ -676,6 +678,27 @@ rule plotProfile:
         --startLabel {params.startLabel} \
         --endLabel {params.endLabel}"
 
+rule bamPEFragmentSize:
+    input: expand(RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam", sample = SAMPLES)
+    output:
+        png = RESULT_DIR + "bamPEFragmentSize/fragmentSize.png",
+        RawFragmentLengths = RESULT_DIR + "bamPEFragmentSize/raw"
+    conda:
+        "envs/deeptools.yaml"
+    params:
+        binSize = str(config['bamCoverage']["params"]['binSize']),
+        #title   = "Fragment size of PE ATAC-seq data",
+        maxFragmentLength = str(config['bamPEFragmentSize']['binSize'])   
+    shell:
+        "bamPEFragmentSize\
+        --histogram {output.png} \
+        --maxFragmentLength {params.maxFragmentLength} \
+        --bamfiles {input} \
+        --samplesLabel ATAC_1 ATAC_2 ATAC_3 ATAC_4 ATAC_5 ATAC_6 \
+        --binSize {params.binSize} \
+        --outRawFragmentLengths {output.RawFragmentLengths}"
+
+        #--plotTitle {params.title} \
 rule multiqc:
     input:
         RESULT_DIR + "logs/"
