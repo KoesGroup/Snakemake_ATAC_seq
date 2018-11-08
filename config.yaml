@@ -108,3 +108,9 @@ plotProfile:
     kmeans : "1"                  # choose the number of kmeans to compute
     startLabel : "TSS"            # default is TSS but could be anything, like "peak start"
     endLabel : "TES"              # TES is default but can be changed like for startLabel
+
+bamPEFragmentSize:
+    binSize: "1000"
+    title:
+    maxFragmentLength: "1000"  
+
