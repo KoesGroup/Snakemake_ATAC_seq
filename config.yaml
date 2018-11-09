@@ -41,8 +41,8 @@ bowtie2:
   params:
     mode: "--local"
     sensitivity: "--very-sensitive-local"
-    max_fragment_len: "--maxins 500"                # maximum fragment length for valid paired-end alignments
-    min_fragment_len: "--minins 80"                 # minimum fragment length for valid paired-end alignments
+    max_fragment_len: "--maxins 2000"                # These parameters ensured that fragments up to 2 kb were allowed to align (-X2000) and that only unique aligning reads were collected (-m1) (https://www.nature.com/articles/nmeth.2688#methods)
+    min_fragment_len: "--minins 30"                 # minimum fragment length for valid paired-end alignments
     verbose: "-q"
 
 #Parameters for bamCoverage:
@@ -82,6 +82,7 @@ macs2:
   qvalue: "0.05"                  #default is 0.05
   outdir : "results/bed/"
   bandwidth: "--bw 350"           #the bandwidth is used to scan the genome for model building. To be set to the expected sonication fragment size.
+  outdir: "results/bed/"
 
 multiBamSummary:
   binSize: "1000"
