@@ -1,4 +1,4 @@
-# Snakemake file for ChIP-Seq PE analysis
+# Snakemake file for ATAC-Seq PE analysis
 
 ###############
 # Libraries
@@ -54,8 +54,8 @@ CASES = get_samples_per_treatment(treatment="treatment")
 CONTROLS = get_samples_per_treatment(treatment="control")
 
 GROUPS = {
-    "group1" : ["ChIP1", "ChIP2", "ChIP3"],
-    "group2" : ["ChIP4", "ChIP5", "ChIP6"]
+    "group1" : ["ATAC1", "ATAC2", "ATAC3"],
+    "group2" : ["ATAC4", "ATAC5", "ATAC6"]
 }                                           #I used this dictionnary to define the group of sample used in the multiBamSummary, might be improved a lot
 
 ##############
@@ -73,12 +73,10 @@ wildcard_constraints:
 
 FASTQC_REPORTS  =     expand(RESULT_DIR + "fastqc/{sample}_{pair}_fastqc.zip", sample=SAMPLES, pair={"forward", "reverse"})
 BAM_INDEX       =     expand(RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam.bai", sample=SAMPLES)
-#BAM_RMDUP       =     expand(RESULT_DIR + "mapped/{sample}.sorted.rmdup.bam", sample=SAMPLES)
 FLAGSTAT_GEN    =     expand(RESULT_DIR + "logs/flagstat/genome/{sample}.bam.flagstat", sample=SAMPLES)
 FLAGSTAT_MITO   =     expand(RESULT_DIR + "logs/flagstat/mitochondrial/{sample}.bam.flagstat", sample=SAMPLES)
 FLAGSTAT_CHLORO =     expand(RESULT_DIR + "logs/flagstat/chloroplast/{sample}.bam.flagstat", sample=SAMPLES)
 BIGWIG          =     expand(RESULT_DIR + "bigwig/{sample}.bw", sample=SAMPLES)
-BAM_COMPARE     =     expand(RESULT_DIR + "bamcompare/log2_{treatment}_{control}.bamcompare.bw", zip, treatment = CASES, control = CONTROLS) #add zip function in the expand to compare respective treatment and control
 BED_NARROW      =     expand(RESULT_DIR + "bed/{sample}_peaks.narrowPeak", sample=SAMPLES)
 MULTIBAMSUMMARY =     RESULT_DIR + "multiBamSummary/MATRIX.npz"
 PLOTCORRELATION =     RESULT_DIR + "plotCorrelation/MATRIX.png"
@@ -96,11 +94,8 @@ FRAGMENTSIZE    =     RESULT_DIR + "bamPEFragmentSize/fragmentSize.png"
 rule all:
     input:
         BAM_INDEX,
-        #BAM_RMDUP,
         FASTQC_REPORTS,
-        #BEDGRAPH,
         BIGWIG,
-        #BAM_COMPARE,
         BED_NARROW,
         MULTIBAMSUMMARY,
         PLOTCORRELATION,
