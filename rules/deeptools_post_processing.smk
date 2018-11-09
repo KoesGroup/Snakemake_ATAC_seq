@@ -125,7 +125,7 @@ rule plotFingerprint:
     input:
         expand(RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam", sample = SAMPLES)
     output:
-        pdf = RESULT_DIR + "plotFingerprint/Fingerplot.pdf"
+        pdf = RESULT_DIR + "plotFingerprint/{sample}.fingerprint.pdf"
     params:
         EXTENDREADS  = str(config["bamCoverage"]["params"]["EXTENDREADS"]),
         binSize      = str(config['bamCoverage']["params"]['binSize'])
