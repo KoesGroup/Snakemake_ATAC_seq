@@ -69,3 +69,12 @@ With the implementation of deeptools rules, the pipeline produces as well those 
 - **HEATMAP** folder contain pdf files displaying the content of the matrix produced by the `computeMatrix` rule under the form of a heatmap. Many option for the `computeMatrix` and the `plotHeatmap` rules can be changed in the configuration file. More information about this figure can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotHeatmap.html).
 
 - **plotProfile** folder contain pdf files displaying profile plot for scores over sets of genomic region, again the genomic region are define in the matrix made previously. Again there are many options to change the plot and more information can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotProfile.html)
+
+# Parameters
+
+Most of the parameters for the analysis are inspired by the original [ATAC-seq paper](https://www.nature.com/articles/nmeth.2688#methods)
+
+For peak-calling and deeptools outputs, the read start sites was adjusted to represent the center of the transposon binding event.
+Previous descriptions of the Tn5 transposase show that the transposon binds as a dimer and inserts two adaptors separated by 9 bp. Therefore, all reads aligning to the + strand were offset by +4 bp, and all reads aligning to the – strand were offset −5 bp, this is performed by the rule `alignmentsieve`.
+
+
