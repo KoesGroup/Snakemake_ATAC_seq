@@ -26,38 +26,6 @@ rule bamCoverage:
         --ignoreForNormalization {params.ignoreForNormalization} \
         &>{log}"
 
-rule bamcompare:
-    input:
-        treatment   = RESULT_DIR + "mapped/{treatment}.shifted.rmdup.sorted.bam",              #input requires an indexed bam file
-        control     = RESULT_DIR + "mapped/{control}.shifted.rmdup.sorted.bam"                   #input requires an indexed bam file
-    output:
-        bigwig = RESULT_DIR + "bamcompare/log2_{treatment}_{control}.bamcompare.bw"
-    message:
-        "Running bamCompare for {wildcards.treatment} and {wildcards.control}"
-    log:
-        RESULT_DIR + "logs/deeptools/log2_{treatment}_{control}.bamcompare.bw.log"
-    conda:
-        "../envs/deeptools.yaml"
-    params:
-        binSize             = str(config['bamcompare']['binSize']),
-        normalizeUsing      = str(config['bamcompare']['normalizeUsing']),
-        EFFECTIVEGENOMESIZE = str(config["bamcompare"]["EFFECTIVEGENOMESIZE"]),
-        operation           = str(config['bamcompare']['operation']),
-        smoothLength        = str(config['bamcompare']['smoothLength']),
-        ignoreForNormalization = str(config['bamcompare']['ignoreForNormalization']),
-        scaleFactorsMethod  = str(config['bamcompare']['scaleFactorsMethod'])
-    shell:
-        "bamCompare -b1 {input.treatment} \
-        -b2 {input.control}  \
-        --binSize {params.binSize} \
-        -o {output.bigwig} \
-        --normalizeUsing {params.normalizeUsing} \
-        --operation {params.operation} \
-        --smoothLength {params.smoothLength} \
-        --ignoreForNormalization {params.ignoreForNormalization} \
-        --scaleFactorsMethod {params.scaleFactorsMethod} \
-        &>{log}"
-
 rule multiBamSummary:
     input:
         lambda wildcards: expand(RESULT_DIR + "mapped/{sample}.shifted.rmdup.sorted.bam", sample = SAMPLES)
