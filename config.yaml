@@ -55,14 +55,14 @@ bamCoverage:
   params:
     EFFECTIVEGENOMESIZE: '820000000' #source = http://plant-plasticity.github.io/resources/3_ATAC-seq%20data%20processing.pdf #option is --effectiveGenomeSize
     EXTENDREADS: '200'              # extend each reads with a 200bp to match the average fragment size of the ChIP experiment
-    binSize: "1000"
+    binSize: "10"
     ignoreForNormalization: "SL3.0ch00" #list here space-delimited chromosomes that should be ignored for normalization, sex chromosomes usually.
     smoothLength: "40"
     normalizeUsing: "RPKM"
 
 
 bamcompare:
-  binSize: "1000"
+  binSize: "10"
   normalizeUsing: "RPKM"          #others choices are CPM, BPM, RPGC, None more documentation:https://deeptools.readthedocs.io/en/develop/content/tools/bamCompare.html?highlight=bamcompare
   EFFECTIVEGENOMESIZE: '820000000'
   operation : "log2"              #others choices are ratio, subtract, add, mean, reciprocal_ratio, first, second more documentation:https://deeptools.readthedocs.io/en/develop/content/tools/bamCompare.html?highlight=bamcompare
@@ -85,25 +85,25 @@ macs2:
   outdir: "results/bed/"
 
 multiBamSummary:
-  binSize: "1000"
+  binSize: "10"
 
 computeMatrix:
-  binSize   : "1000"
+  binSize   : "10"
 
 plotCorrelation:
   corMethod : "pearson"            # Can be replaced by spearman
   whatToPlot: "heatmap"            # Can be replaced by scatterplot
-  color     : "PuBuGn"             # see [here](https://matplotlib.org/examples/color/colormaps_reference.html) for alternative colors
+  color     : "RdBu"             # see [here](https://matplotlib.org/examples/color/colormaps_reference.html) for alternative colors
 
 plotHeatmap:
   kmeans    : "1"
-  color     : "PuBuGn"
+  color     : "RdBu"
   plot      : "plot, heatmap and colorbar"    # Others options are : “plot and heatmap”, “heatmap only” and “heatmap and colorbar”
 
 
 plotFingerprint:
     EXTENDREADS: '200'
-    binSize: "1000"
+    binSize: "10"
 
 plotProfile:
     kmeans : "1"                  # choose the number of kmeans to compute
@@ -111,7 +111,7 @@ plotProfile:
     endLabel : "TES"              # TES is default but can be changed like for startLabel
 
 bamPEFragmentSize:
-    binSize: "1000"
+    binSize: "10"
     title:
-    maxFragmentLength: "1000"  
+    maxFragmentLength: "2000"  
 
