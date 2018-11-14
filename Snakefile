@@ -80,13 +80,14 @@ BIGWIG          =     expand(RESULT_DIR + "bigwig/{sample}.bw", sample=SAMPLES)
 BED_NARROW      =     expand(RESULT_DIR + "bed/{sample}_peaks.narrowPeak", sample=SAMPLES)
 MULTIBAMSUMMARY =     RESULT_DIR + "multiBamSummary/MATRIX.npz"
 PLOTCORRELATION =     RESULT_DIR + "plotCorrelation/MATRIX.png"
-COMPUTEMATRIX   =     expand(RESULT_DIR + "computematrix/{sample}.TSS.gz", sample=SAMPLES)
-HEATMAP         =     expand(RESULT_DIR + "heatmap/{sample}.pdf", sample=SAMPLES)
+COMPUTEMATRIX   =     expand(RESULT_DIR + "computematrix/{sample}.{type}.gz", sample=SAMPLES, type={"TSS", "scale-regions"})
+HEATMAP         =     expand(RESULT_DIR + "heatmap/{sample}.{type}.pdf", sample=SAMPLES, type={"TSS", "scale-regions"}) 
 PLOTFINGERPRINT =     RESULT_DIR + "plotFingerprint/Fingerplot.pdf"
-PLOTPROFILE_PDF =     expand(RESULT_DIR + "plotProfile/{sample}.pdf", sample=SAMPLES)
-PLOTPROFILE_BED =     expand(RESULT_DIR + "plotProfile/{sample}.bed", sample=SAMPLES)
-MULTIQC         =     "multiqc_report.html"
-FRAGMENTSIZE    =     RESULT_DIR + "bamPEFragmentSize/fragmentSize.png"  
+PLOTPROFILE_PDF =     expand(RESULT_DIR + "plotProfile/{sample}.{type}.pdf", sample=SAMPLES, type={"TSS", "scale-regions"})
+PLOTPROFILE_BED =     expand(RESULT_DIR + "plotProfile/{sample}.{type}.bed", sample=SAMPLES, type={"TSS", "scale-regions"})
+MULTIQC         =     "qc/multiqc.html"
+FRAGMENTSIZE    =     RESULT_DIR + "bamPEFragmentSize/fragmentSize.png"
+PLOTCOVERAGE    =     RESULT_DIR + "plotCoverage/Coverage.png"    
 
 ###############
 # Final output
@@ -104,11 +105,12 @@ rule all:
         PLOTFINGERPRINT,
         PLOTPROFILE_PDF,
         PLOTPROFILE_BED,
-        #MULTIQC,
+        MULTIQC,
         FLAGSTAT_GEN,
-        #FLAGSTAT_MITO,
-        #FLAGSTAT_CHLORO,
-        FRAGMENTSIZE 
+        FLAGSTAT_MITO,
+        FLAGSTAT_CHLORO,
+        #FRAGMENTSIZE,
+        PLOTCOVERAGE 
     message: "ATAC-seq pipeline succesfully run."		#finger crossed to see this message!
 
     shell:"#rm -rf {WORKING_DIR}"
@@ -122,16 +124,35 @@ include : 'rules/pre_processing.smk'
 include : "rules/macs2_peak_calling.smk"
 include : "rules/deeptools_post_processing.smk"
 
+# rule multiqc:
+#     input:
+#         RESULT_DIR + "logs/",
+#         expand(RESULT_DIR + "fastqc/{sample}_{pair}_fastqc.zip", sample=SAMPLES, pair={"forward", "reverse"}),
+#         RESULT_DIR + "plotCoverage/coverage.tab",
+#         expand(RESULT_DIR + "bed/{sample}_peaks.xls", sample= SAMPLES)
+#     output:
+#         "multiqc_report.html/multiqc_report.html"
+#     conda:
+#         "envs/multiqc_env.yaml"
+#     shell:
+#         "multiqc {input} \
+#         -o {output} \
+#         -v \
+#         -d \
+#         -f "
+
+         #RESULT_DIR + "bamPEFragmentSize/fragmentSize.tab",
+
+
 rule multiqc:
     input:
-        RESULT_DIR + "logs/"
+        expand(RESULT_DIR + "fastqc/{sample}_{pair}_fastqc.zip", sample=SAMPLES, pair={"forward", "reverse"}),
+        expand(RESULT_DIR + "bed/{sample}_peaks.xls", sample= SAMPLES)
     output:
-        "multiqc_report.html"
-    conda:
-        "envs/multiqc_env.yaml"
-    shell:
-        "multiqc {input} \
-        -o {output} \
-        -v \
-        -d \
-        -f "
+        "qc/multiqc.html"
+    params:
+        ""  # Optional: extra parameters for multiqc.
+    log:
+        "logs/multiqc.log"
+    wrapper:
+        "0.27.1/bio/multiqc"

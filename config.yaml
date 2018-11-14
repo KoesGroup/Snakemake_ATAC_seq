@@ -89,6 +89,8 @@ multiBamSummary:
 
 computeMatrix:
   binSize   : "10"
+  afterRegion: "1000"
+  beforeRegion: "1000"
 
 plotCorrelation:
   corMethod : "pearson"            # Can be replaced by spearman
