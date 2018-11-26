@@ -1,14 +1,20 @@
-# ChIP_seq_Snakemake
-A snakemake pipeline for the analysis of ChIP-seq data
+# ATAC_seq_Snakemake
+A snakemake pipeline for the analysis of ATAC-seq data
 
 [![Snakemake](https://img.shields.io/badge/snakemake-≥5.2.0-brightgreen.svg)](https://snakemake.bitbucket.io)
 [![Miniconda](https://img.shields.io/badge/miniconda-blue.svg)](https://conda.io/miniconda)
 
 # Aim
-Snakemake pipeline made for reproducible analysis of paired-end Illumina ChIP-seq data. The desired output of this pipeline are:
-- fastqc zip and html files
-- bigWig files (including bamCompare rule)
-- bed files
+
+Snakemake pipeline made for reproducible analysis of paired-end Illumina ATAC-seq data. This pipeline is similar on many point to the Snakemake_ChIP-seq pipeline, it includes steps of mapping to the mitochondrial and chloroplast genome of tomato as contamination by these organelles occurs often in ATAC-seq.
+Post-processing also includes the tool **AlignementSieve**, for the adjustement of the binding site.
+
+
+For now I chose to include the fasta files for the mitochondrial and chloroplast genome directly in the repository, in the future I would like the pipeline to be able to fetch them.
+
+
+The bowtie2 alignment is modified to output as well the unmapped reads using `--un-conc-gz` flag. The unmapped reads and total reads are then aligned to the reference, mitochondrial and chloroplast genome. The output of the mapping is then analysed with `samtools flagstat` and hopefully nicely ploted thanks to **MultiQc**.
+
 
 # Content of the repository
 
@@ -28,8 +34,8 @@ Snakemake pipeline made for reproducible analysis of paired-end Illumina ChIP-se
 ## Conda environment
 
 First, you need to create an environment for the use of Snakemake with [Conda package manager](https://conda.io/docs/using/envs.html).
-1. Create a virtual environment named "chipseq" from the `global_env.yaml` file with the following command: `conda env create --name chipseq --file ~/envs/global_env.yaml`
-2. Then, activate this virtual environment with `source activate chipseq`
+1. Create a virtual environment named "atacseq" from the `global_env.yaml` file with the following command: `conda env create --name atacseq --file ~/envs/global_env.yaml`
+2. Then, activate this virtual environment with `source activate atacseq`
 
 The Snakefile will then take care of installing and loading the packages and softwares required by each step of the pipeline.
 
@@ -58,9 +64,17 @@ With the implementation of deeptools rules, the pipeline produces as well those 
 
 - **plotFingerprint** contains interesting figures that answer the question: **"Did my ChIP work???"** . Explanation of the plot and the options available can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotFingerprint.html)
 
-- **PLOTCORRELATION** folder contain pdf files displaying the correlation between the samples tested in the ChIP experiment, many options in the plotcorrelation rules can be changed via the configuration file. More information about this plot can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotCorrelation.html)
+- **PLOTCORRELATION** folder contain pdf files displaying the correlation between the samples tested in the ATAC experiment, many options in the plotcorrelation rules can be changed via the configuration file. More information about this plot can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotCorrelation.html)
 
 - **HEATMAP** folder contain pdf files displaying the content of the matrix produced by the `computeMatrix` rule under the form of a heatmap. Many option for the `computeMatrix` and the `plotHeatmap` rules can be changed in the configuration file. More information about this figure can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotHeatmap.html).
 
 - **plotProfile** folder contain pdf files displaying profile plot for scores over sets of genomic region, again the genomic region are define in the matrix made previously. Again there are many options to change the plot and more information can be found [here](https://deeptools.readthedocs.io/en/develop/content/tools/plotProfile.html)
+
+# Parameters
+
+Most of the parameters for the analysis are inspired by the original [ATAC-seq paper](https://www.nature.com/articles/nmeth.2688#methods)
+
+For peak-calling and deeptools outputs, the read start sites was adjusted to represent the center of the transposon binding event.
+Previous descriptions of the Tn5 transposase show that the transposon binds as a dimer and inserts two adaptors separated by 9 bp. Therefore, all reads aligning to the + strand were offset by +4 bp, and all reads aligning to the – strand were offset −5 bp, this is performed by the rule `alignmentsieve`.
+
 
